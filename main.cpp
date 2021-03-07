@@ -4,17 +4,17 @@
 //#define DEBUG
 
 struct current_time{
-    int year = 2021;
-    int day  = 2;
-    int months = 3;
-    int hours = 6;
-    int minutes = 30;
-    int seconds = 29;
+    uint16_t year = 2021;
+    uint16_t day  = 2;
+    uint16_t months = 3;
+    uint16_t hours = 6;
+    uint16_t minutes = 30;
+    uint16_t seconds = 29;
     uint32_t unix_time;
 
     current_time() = default;
     current_time(uint32_t _unix_time) : unix_time{_unix_time} {}
-    current_time(int _year, int _day, int _months, int _hours, int _minutes, int _seconds) : year{_year}, day{_day}, months{_months},hours{_hours}, minutes{_minutes}, seconds{_seconds} {}
+    current_time(uint16_t _year, uint16_t _day, uint16_t _months, uint16_t _hours, uint16_t _minutes, uint16_t _seconds) : year{_year}, day{_day}, months{_months},hours{_hours}, minutes{_minutes}, seconds{_seconds} {}
     void unix_current_time();
     void leap_years();
     void print();
@@ -77,13 +77,48 @@ void current_time::print(){
     std::cout << "year: " << year << " month: " << months << " day: " << day << " hours: " << hours << " minutes: " << minutes << " seconds: " << seconds <<  '\n';
 }
 
+void bcd_represent(uint8_t *buf, current_time _struct){
+    uint16_t value[7] = {_struct.year, _struct.day, _struct.months, _struct.hours, _struct.minutes, _struct.seconds};
+    uint16_t thousands;
+    uint16_t hundreds;
+    uint16_t tens;
+    uint16_t units;
+    uint16_t tmp;
+    uint16_t j = 0;
+    for(uint16_t i = 0; i <= 6; i++){
+    if(value[i] > 1000){
+        tmp = value[i] % 1000;
+        units = (tmp % 100) % 10;
+        hundreds = tmp / 100;
+        tens = (tmp % 100) / 10;
+        thousands = value[i] / 1000;
+        buf[j++] = (thousands << 4) | hundreds;
+        buf[j++] = (tens << 4) | units;
+    }else{
+        buf[j++] = ((value[i] / 10) << 4) | (value[i] % 10);
+    }
+   }
+}
+
+void bcd_to_decimal(uint8_t *buf, current_time* _time){
+    _time->year =  (((buf[0] & 0xf0)>>4) * 1000) + (((buf[0] & 0x0f)) * 100 + (((buf[1] & 0xf0)>>4) * 10 + ((buf[1] & 0x0f))));
+    _time->day =  (((buf[2] & 0xf0)>>4) * 10) + (((buf[2] & 0x0f)));
+    _time->months = (((buf[3] & 0xf0)>>4) * 10) + (((buf[3] & 0x0f)));
+    _time->hours = (((buf[4] & 0xf0)>>4) * 10) + (((buf[4] & 0x0f)));
+    _time->minutes = (((buf[5] & 0xf0)>>4) * 10) + (((buf[5] & 0x0f)));
+    _time->seconds = (((buf[6] & 0xf0)>>4) * 10) + (((buf[6] & 0x0f)));
+}
+
 int main()
 {
-    //current_time ct;
-   // current_time ct(2004,2,3,16,25,28);
-    current_time ct(1614702328);
-    ct.unix_time_to_current_time();
-    //ct.unix_current_time();
+    current_time ct(2021,15,3,17,5,5);
+    //current_time ct(1615050305);
+    //ct.unix_time_to_current_time();
+    //ct.print();
+    uint8_t bcd_repr[7];
+    bcd_represent(bcd_repr, ct);
+    bcd_to_decimal(bcd_repr,&ct);
+    ct.unix_current_time();
     ct.print();
     return 0;
 }
